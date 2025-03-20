@@ -27,6 +27,7 @@ export const AudioProcessor: React.FC<AudioProcessorProps> = ({ mode }) => {
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurfer = useRef<WaveSurfer | null>(null);
   const audioWorker = useRef<any>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   // Only echo delay is configurable now
   const [echoDelay, setEchoDelay] = useState(100);
@@ -39,6 +40,11 @@ export const AudioProcessor: React.FC<AudioProcessorProps> = ({ mode }) => {
         progressColor: '#818CF8',
         cursorColor: '#4F46E5',
         height: 100,
+        normalize: true,
+      });
+
+      wavesurfer.current.on('finish', () => {
+        setIsPlaying(false);
       });
     }
 
@@ -178,8 +184,19 @@ export const AudioProcessor: React.FC<AudioProcessorProps> = ({ mode }) => {
     }
   };
 
-  const handlePlayAudio = (url: string) => {
-    wavesurfer.current?.load(url);
+  const handlePlayAudio = async (url: string) => {
+    if (!wavesurfer.current) return;
+
+    // If already playing, stop first
+    if (isPlaying) {
+      wavesurfer.current.stop();
+      setIsPlaying(false);
+    }
+
+    // Load and play the new audio
+    await wavesurfer.current.load(url);
+    wavesurfer.current.play();
+    setIsPlaying(true);
   };
 
   // Helper function to convert AudioBuffer to WAV format
@@ -295,7 +312,7 @@ export const AudioProcessor: React.FC<AudioProcessorProps> = ({ mode }) => {
                 className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
               >
                 <Play size={20} />
-                Play Input Audio
+                {isPlaying && processingStage === 'input' ? 'Stop' : 'Play Input Audio'}
               </button>
             </div>
           )}
@@ -334,7 +351,7 @@ export const AudioProcessor: React.FC<AudioProcessorProps> = ({ mode }) => {
                     className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
                   >
                     <Play size={20} />
-                    Play Echoed Audio
+                    {isPlaying && processingStage === 'echo' ? 'Stop' : 'Play Echoed Audio'}
                   </button>
                 )}
               </div>
@@ -362,7 +379,7 @@ export const AudioProcessor: React.FC<AudioProcessorProps> = ({ mode }) => {
                       className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
                     >
                       <Play size={20} />
-                      Play Processed Audio
+                      {isPlaying && processingStage === 'final' ? 'Stop' : 'Play Processed Audio'}
                     </button>
                     <a
                       href={processedUrl}
